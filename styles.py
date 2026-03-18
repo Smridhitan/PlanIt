@@ -1,21 +1,7 @@
 # ── Design Tokens & Style Configuration ──
-# Single source of truth for the app's visual language.
 
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
-
-# ── Colors ──
-BG_SIDEBAR   = "#f1f5f9"   # slate-100
-BG_CONTENT   = "#ffffff"
-BG_HEADER    = "#ffffff"
-ACCENT       = "#3b82f6"   # blue-500
-ACCENT_HOVER = "#2563eb"   # blue-600
-TEXT_PRIMARY  = "#1e293b"   # slate-800
-TEXT_MUTED    = "#94a3b8"   # slate-400
-BORDER       = "#e2e8f0"   # slate-200
-SUCCESS      = "#22c55e"
-WARNING      = "#f59e0b"
-DANGER       = "#ef4444"
 
 # ── Fonts ──
 FONT_FAMILY  = "Helvetica"
@@ -30,13 +16,17 @@ FONT_NAV_ACT = (FONT_FAMILY, 12, "bold")
 PAD_SM = 8
 PAD_MD = 16
 PAD_LG = 32
-SIDEBAR_WIDTH = 200
+SIDEBAR_WIDTH = 210
 
-def configure_styles():
-    """Apply the cosmo theme and register custom widget styles."""
+def apply_theme_styles(is_dark=False):
+    """Apply theme dynamically and register custom widget styles globally."""
     style = tb.Style()
-    if "cosmo" in style.theme_names():
-        style.theme_use("cosmo")
+    
+    theme_name = "darkly" if is_dark else "cosmo"
+    if theme_name in style.theme_names():
+        style.theme_use(theme_name)
+
+    accent_color = style.colors.primary
 
     # Sidebar nav buttons (inactive)
     style.configure("Nav.TButton",
@@ -46,9 +36,6 @@ def configure_styles():
         relief="flat",
         borderwidth=0,
     )
-    style.map("Nav.TButton",
-        background=[("active", BORDER)],
-    )
 
     # Active nav button
     style.configure("NavActive.TButton",
@@ -57,18 +44,13 @@ def configure_styles():
         anchor="w",
         relief="flat",
         borderwidth=0,
-        foreground=ACCENT,
-    )
-    style.map("NavActive.TButton",
-        background=[("active", BORDER)],
+        foreground=accent_color,
     )
 
-    # Panel heading
-    style.configure("Heading.TLabel", font=FONT_HEADING, foreground=TEXT_PRIMARY)
-    style.configure("Subheading.TLabel", font=FONT_SUBHEAD, foreground=TEXT_PRIMARY)
-    style.configure("Muted.TLabel", font=FONT_SMALL, foreground=TEXT_MUTED)
+    # Panel headings
+    style.configure("Heading.TLabel", font=FONT_HEADING)
+    style.configure("Subheading.TLabel", font=FONT_SUBHEAD)
+    style.configure("Muted.TLabel", font=FONT_SMALL, foreground=style.colors.secondary)
 
     # Form label
-    style.configure("Form.TLabel", font=FONT_BODY, foreground=TEXT_PRIMARY)
-
-    return style
+    style.configure("Form.TLabel", font=FONT_BODY)

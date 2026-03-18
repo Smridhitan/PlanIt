@@ -3,14 +3,9 @@ import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 from ttkbootstrap.dialogs import Messagebox
 from database import Database
-from styles import (
-    FONT_HEADING, FONT_SUBHEAD, FONT_BODY, FONT_SMALL,
-    TEXT_PRIMARY, TEXT_MUTED, ACCENT, SUCCESS, BORDER,
-    BG_CONTENT, PAD_SM, PAD_MD, PAD_LG,
-)
+from styles import PAD_SM, PAD_MD, PAD_LG
 
 db = Database()
-
 
 # ── Helpers ──
 
@@ -23,13 +18,11 @@ def _labeled_field(parent, label, row, widget_factory):
     widget.grid(row=row, column=1, sticky=EW, pady=PAD_SM)
     return widget
 
-
 def _entry(parent, placeholder=""):
     e = tb.Entry(parent, width=30)
     if placeholder:
         e.insert(0, placeholder)
     return e
-
 
 def _section_header(parent, title, subtitle=None):
     """Render a clean section header."""
@@ -38,8 +31,7 @@ def _section_header(parent, title, subtitle=None):
         tb.Label(parent, text=subtitle, style="Muted.TLabel").pack(anchor=W, pady=(0, PAD_LG))
     else:
         # spacing
-        tk.Frame(parent, height=PAD_MD, bg=BG_CONTENT).pack()
-
+        tb.Frame(parent, height=PAD_MD).pack()
 
 # ═══════════════════════════════════════════
 #  EVENT PANEL
@@ -67,7 +59,7 @@ def build_event_panel(parent):
 
     # Status feedback label
     status_var = tk.StringVar(value="")
-    status_lbl = tb.Label(panel, textvariable=status_var, font=FONT_SMALL)
+    status_lbl = tb.Label(panel, textvariable=status_var, style="Muted.TLabel")
     status_lbl.pack(anchor=W, pady=(PAD_MD, 0))
 
     def submit():
@@ -78,17 +70,16 @@ def build_event_panel(parent):
                 entry_fees.get(), entry_venue.get()
             )
             status_var.set("✓  Event created successfully.")
-            status_lbl.configure(foreground=SUCCESS)
+            status_lbl.configure(bootstyle="success")
         except Exception as e:
             status_var.set(f"✕  {e}")
-            status_lbl.configure(foreground="#ef4444")
+            status_lbl.configure(bootstyle="danger")
 
     btn_frame = tb.Frame(panel)
     btn_frame.pack(anchor=W, pady=PAD_LG)
     tb.Button(btn_frame, text="Submit Event", command=submit, bootstyle="primary", width=18).pack(side=LEFT)
 
     return panel
-
 
 # ═══════════════════════════════════════════
 #  RESOURCE PANEL
@@ -112,7 +103,7 @@ def build_resource_panel(parent):
     result_frame.pack(fill=X, pady=PAD_LG)
 
     result_var = tk.StringVar(value="Waiting for allocation…")
-    result_lbl = tb.Label(result_frame, textvariable=result_var, font=FONT_BODY, justify=LEFT, foreground=TEXT_MUTED)
+    result_lbl = tb.Label(result_frame, textvariable=result_var, style="Muted.TLabel", justify=LEFT)
     result_lbl.pack(anchor=W)
 
     def allocate():
@@ -128,15 +119,14 @@ def build_resource_panel(parent):
                 f"Allocated:       {qty}\n"
                 f"Stock after:     {after}"
             )
-            result_lbl.configure(foreground=SUCCESS)
+            result_lbl.configure(bootstyle="success")
         except Exception as e:
             result_var.set(f"Allocation failed: {e}")
-            result_lbl.configure(foreground="#ef4444")
+            result_lbl.configure(bootstyle="danger")
 
     tb.Button(panel, text="Confirm Allocation", command=allocate, bootstyle="warning", width=20).pack(anchor=W, pady=(0, PAD_SM))
 
     return panel
-
 
 # ═══════════════════════════════════════════
 #  ANALYTICS DASHBOARD PANEL
@@ -169,7 +159,7 @@ def build_view_panel(parent):
         for row in db.get_events():
             tree_ev.insert("", END, values=row)
     except Exception as e:
-        tb.Label(tab_events, text=f"Could not load events: {e}", foreground="#ef4444").pack()
+        tb.Label(tab_events, text=f"Could not load events: {e}", bootstyle="danger").pack()
 
     # ── Resources tab ──
     tab_res = tb.Frame(notebook, padding=PAD_SM)
@@ -190,6 +180,6 @@ def build_view_panel(parent):
         for row in db.get_resources():
             tree_res.insert("", END, values=row)
     except Exception as e:
-        tb.Label(tab_res, text=f"Could not load resources: {e}", foreground="#ef4444").pack()
+        tb.Label(tab_res, text=f"Could not load resources: {e}", bootstyle="danger").pack()
 
     return panel
