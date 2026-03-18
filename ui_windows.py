@@ -199,4 +199,25 @@ def build_view_panel(parent):
     except Exception as e:
         tb.Label(tab_res, text=f"Could not load resources: {format_error(e)}", bootstyle="danger").pack(pady=20)
 
+    # ── Sessions tab ──
+    tab_ses = tb.Frame(notebook, padding=PAD_SM)
+    notebook.add(tab_ses, text="  Sessions  ")
+
+    ses_cols = ("Session ID", "Event ID", "Title", "Date", "Start Time", "End Time")
+    tree_ses = tb.Treeview(tab_ses, columns=ses_cols, show="headings", height=14)
+    for c in ses_cols:
+        tree_ses.heading(c, text=c)
+        tree_ses.column(c, anchor=CENTER, width=120)
+    tree_ses.pack(fill=BOTH, expand=True)
+
+    scroll_ses = tb.Scrollbar(tab_ses, orient=VERTICAL, command=tree_ses.yview)
+    tree_ses.configure(yscrollcommand=scroll_ses.set)
+    scroll_ses.place(relx=1.0, rely=0, relheight=1.0, anchor=NE)
+
+    try:
+        for row in db.get_sessions():
+            tree_ses.insert("", END, values=row)
+    except Exception as e:
+        tb.Label(tab_ses, text=f"Could not load sessions: {format_error(e)}", bootstyle="danger").pack(pady=20)
+
     return panel

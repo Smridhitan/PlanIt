@@ -73,3 +73,12 @@ class Database:
         rows = cursor.fetchall()
         conn.close()
         return rows
+
+    def get_sessions(self):
+        """Fetch all sessions."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT session_id, event_id, title, session_date, start_time, end_time FROM Session")
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
