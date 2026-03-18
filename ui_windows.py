@@ -1,149 +1,195 @@
+import tkinter as tk
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 from ttkbootstrap.dialogs import Messagebox
 from database import Database
+from styles import (
+    FONT_HEADING, FONT_SUBHEAD, FONT_BODY, FONT_SMALL,
+    TEXT_PRIMARY, TEXT_MUTED, ACCENT, SUCCESS, BORDER,
+    BG_CONTENT, PAD_SM, PAD_MD, PAD_LG,
+)
 
 db = Database()
 
-def create_labeled_entry(parent, label_text, row, placeholder=""):
-    tb.Label(parent, text=label_text, font=("Helvetica", 11)).grid(row=row, column=0, sticky=W, pady=12, padx=5)
-    entry = tb.Entry(parent, width=35)
-    entry.grid(row=row, column=1, sticky=E, pady=12, padx=5)
+
+# ── Helpers ──
+
+def _labeled_field(parent, label, row, widget_factory):
+    """Create a label + widget pair on a grid row."""
+    tb.Label(parent, text=label, style="Form.TLabel").grid(
+        row=row, column=0, sticky=W, pady=PAD_SM, padx=(0, PAD_MD)
+    )
+    widget = widget_factory(parent)
+    widget.grid(row=row, column=1, sticky=EW, pady=PAD_SM)
+    return widget
+
+
+def _entry(parent, placeholder=""):
+    e = tb.Entry(parent, width=30)
     if placeholder:
-        entry.insert(0, placeholder)
-    return entry
+        e.insert(0, placeholder)
+    return e
 
-def open_event_window(root):
-    event_win = tb.Toplevel(root)
-    event_win.title("Event Management")
-    event_win.geometry("500x520")
-    event_win.grab_set()
 
-    frame = tb.Frame(event_win, padding=35)
-    frame.pack(fill=BOTH, expand=True)
+def _section_header(parent, title, subtitle=None):
+    """Render a clean section header."""
+    tb.Label(parent, text=title, style="Heading.TLabel").pack(anchor=W, pady=(0, 4))
+    if subtitle:
+        tb.Label(parent, text=subtitle, style="Muted.TLabel").pack(anchor=W, pady=(0, PAD_LG))
+    else:
+        # spacing
+        tk.Frame(parent, height=PAD_MD, bg=BG_CONTENT).pack()
 
-    tb.Label(frame, text="Create New Event", font=('Helvetica', 18, 'bold'), bootstyle="info").grid(row=0, column=0, columnspan=2, pady=(0, 25))
 
-    entry_name = create_labeled_entry(frame, "Event Name:", 1)
-    
-    tb.Label(frame, text="Event Type:", font=("Helvetica", 11)).grid(row=2, column=0, sticky=W, pady=12, padx=5)
-    entry_type = tb.Combobox(frame, width=33, state="readonly", values=["Workshop", "Performance", "Panel Discussion", "Keynote Talk", "Seminar", "Other"])
+# ═══════════════════════════════════════════
+#  EVENT PANEL
+# ═══════════════════════════════════════════
+
+def build_event_panel(parent):
+    panel = tb.Frame(parent)
+
+    _section_header(panel, "Create New Event", "Fill in the details below to register an event.")
+
+    form = tb.Frame(panel)
+    form.pack(fill=X)
+    form.columnconfigure(1, weight=1)
+
+    entry_name  = _labeled_field(form, "Event Name", 0, lambda p: _entry(p))
+    entry_type  = _labeled_field(form, "Event Type", 1,
+        lambda p: tb.Combobox(p, width=28, state="readonly",
+            values=["Workshop", "Performance", "Panel Discussion", "Keynote Talk", "Seminar", "Other"]))
     entry_type.current(0)
-    entry_type.grid(row=2, column=1, sticky=E, pady=12, padx=5)
 
-    entry_start = create_labeled_entry(frame, "Start Date (YYYY-MM-DD):", 3, "2026-04-01")
-    entry_end = create_labeled_entry(frame, "End Date (YYYY-MM-DD):", 4, "2026-04-02")
-    entry_fees = create_labeled_entry(frame, "Registration Fees ($):", 5, "0.00")
-    entry_venue = create_labeled_entry(frame, "Venue ID:", 6, "1")
+    entry_start = _labeled_field(form, "Start Date", 2, lambda p: _entry(p, "YYYY-MM-DD"))
+    entry_end   = _labeled_field(form, "End Date",   3, lambda p: _entry(p, "YYYY-MM-DD"))
+    entry_fees  = _labeled_field(form, "Fees",       4, lambda p: _entry(p, "0.00"))
+    entry_venue = _labeled_field(form, "Venue ID",   5, lambda p: _entry(p, "1"))
 
-    def submit_event():
+    # Status feedback label
+    status_var = tk.StringVar(value="")
+    status_lbl = tb.Label(panel, textvariable=status_var, font=FONT_SMALL)
+    status_lbl.pack(anchor=W, pady=(PAD_MD, 0))
+
+    def submit():
         try:
             db.add_event(
-                entry_name.get(),
-                entry_type.get(),
-                entry_start.get(),
-                entry_end.get(),
-                entry_fees.get(),
-                entry_venue.get()
+                entry_name.get(), entry_type.get(),
+                entry_start.get(), entry_end.get(),
+                entry_fees.get(), entry_venue.get()
             )
-            Messagebox.show_info("Event Added Successfully!", "Success", parent=event_win)
-            event_win.destroy()
+            status_var.set("✓  Event created successfully.")
+            status_lbl.configure(foreground=SUCCESS)
         except Exception as e:
-            Messagebox.show_error(str(e), "Error", parent=event_win)
+            status_var.set(f"✕  {e}")
+            status_lbl.configure(foreground="#ef4444")
 
-    btn_frame = tb.Frame(frame)
-    btn_frame.grid(row=7, column=0, columnspan=2, pady=30)
-    
-    tb.Button(btn_frame, text="Cancel", command=event_win.destroy, bootstyle="secondary-link", width=15).pack(side=LEFT, padx=10)
-    tb.Button(btn_frame, text="Submit Event", command=submit_event, bootstyle="info", width=15).pack(side=LEFT, padx=10)
+    btn_frame = tb.Frame(panel)
+    btn_frame.pack(anchor=W, pady=PAD_LG)
+    tb.Button(btn_frame, text="Submit Event", command=submit, bootstyle="primary", width=18).pack(side=LEFT)
+
+    return panel
 
 
-def open_resource_window(root):
-    res_win = tb.Toplevel(root)
-    res_win.title("Resource Manager")
-    res_win.geometry("550x450")
-    res_win.grab_set()
+# ═══════════════════════════════════════════
+#  RESOURCE PANEL
+# ═══════════════════════════════════════════
 
-    frame = tb.Frame(res_win, padding=35)
-    frame.pack(fill=BOTH, expand=True)
+def build_resource_panel(parent):
+    panel = tb.Frame(parent)
 
-    tb.Label(frame, text="Allocate Resources", font=('Helvetica', 18, 'bold'), bootstyle="warning").grid(row=0, column=0, columnspan=2, pady=(0, 25))
+    _section_header(panel, "Allocate Resources", "Allocate inventory and observe the database trigger in action.")
 
-    entry_session = create_labeled_entry(frame, "Session ID:", 1)
-    entry_resource = create_labeled_entry(frame, "Resource ID:", 2)
-    entry_qty = create_labeled_entry(frame, "Quantity Required:", 3)
+    form = tb.Frame(panel)
+    form.pack(fill=X)
+    form.columnconfigure(1, weight=1)
 
-    result_var = tb.StringVar()
-    result_var.set("Ready for allocation. System trigger is active.")
-    
+    entry_session  = _labeled_field(form, "Session ID",  0, lambda p: _entry(p))
+    entry_resource = _labeled_field(form, "Resource ID", 1, lambda p: _entry(p))
+    entry_qty      = _labeled_field(form, "Quantity",    2, lambda p: _entry(p))
+
+    # Trigger result card
+    result_frame = tb.Labelframe(panel, text="Trigger Output", padding=PAD_MD)
+    result_frame.pack(fill=X, pady=PAD_LG)
+
+    result_var = tk.StringVar(value="Waiting for allocation…")
+    result_lbl = tb.Label(result_frame, textvariable=result_var, font=FONT_BODY, justify=LEFT, foreground=TEXT_MUTED)
+    result_lbl.pack(anchor=W)
+
     def allocate():
         try:
-            session_id = entry_session.get()
-            resource_id = entry_resource.get()
-            quantity = int(entry_qty.get())
-            
-            before, after = db.allocate_resource(session_id, resource_id, quantity)
-            
-            report = (f"🔥 DB TRIGGER EXECUTED SUCCESSFULLY!\n\n"
-                      f"• Initial Stock: {before}\n"
-                      f"• Quantity Deducted: {quantity}\n"
-                      f"• Remaining Available: {after}")
-            result_var.set(report)
+            sid = entry_session.get()
+            rid = entry_resource.get()
+            qty = int(entry_qty.get())
+            before, after = db.allocate_resource(sid, rid, qty)
 
+            result_var.set(
+                f"Trigger executed successfully.\n\n"
+                f"Stock before:   {before}\n"
+                f"Allocated:       {qty}\n"
+                f"Stock after:     {after}"
+            )
+            result_lbl.configure(foreground=SUCCESS)
         except Exception as e:
-            Messagebox.show_error(f"Could not complete allocation request.\nReason: {str(e)}", "Allocation Failed", parent=res_win)
+            result_var.set(f"Allocation failed: {e}")
+            result_lbl.configure(foreground="#ef4444")
 
-    tb.Button(frame, text="Confirm Allocation", command=allocate, bootstyle="warning", width=20).grid(row=4, column=0, columnspan=2, pady=25)
+    tb.Button(panel, text="Confirm Allocation", command=allocate, bootstyle="warning", width=20).pack(anchor=W, pady=(0, PAD_SM))
 
-    result_label = tb.Label(frame, textvariable=result_var, justify="left", bootstyle="inverse-dark", padding=20)
-    result_label.grid(row=5, column=0, columnspan=2, fill="x", pady=10)
+    return panel
 
 
-def open_view_window(root):
-    view_win = tb.Toplevel(root)
-    view_win.title("Analytics Dashboard")
-    view_win.geometry("800x500")
+# ═══════════════════════════════════════════
+#  ANALYTICS DASHBOARD PANEL
+# ═══════════════════════════════════════════
 
-    frame = tb.Frame(view_win, padding=20)
-    frame.pack(fill=BOTH, expand=True)
+def build_view_panel(parent):
+    panel = tb.Frame(parent)
 
-    notebook = tb.Notebook(frame, bootstyle="info")
-    notebook.pack(fill=BOTH, expand=True, pady=(0, 20))
+    _section_header(panel, "Analytics Dashboard", "Browse event and resource records from the database.")
 
-    # Event Tab
-    tab_events = tb.Frame(notebook)
-    notebook.add(tab_events, text="📅 Event Registry")
-    
-    tree_events = tb.Treeview(tab_events, bootstyle="info", columns=("Event ID", "Event Name", "Start Date", "End Date"), show="headings", height=15)
-    tree_events.pack(fill=BOTH, expand=True, padx=10, pady=10)
-    
-    for col in ("Event ID", "Event Name", "Start Date", "End Date"):
-        tree_events.heading(col, text=col)
-        tree_events.column(col, anchor=CENTER)
+    notebook = tb.Notebook(panel)
+    notebook.pack(fill=BOTH, expand=True)
 
-    try:
-        event_rows = db.get_events()
-        for row in event_rows:
-            tree_events.insert("", "end", values=row)
-    except Exception as e:
-        tb.Label(tab_events, text=f"Error loading events: {str(e)}", bootstyle="danger").pack(pady=20)
+    # ── Events tab ──
+    tab_events = tb.Frame(notebook, padding=PAD_SM)
+    notebook.add(tab_events, text="  Events  ")
 
-    # Resource Tab
-    tab_resources = tb.Frame(notebook)
-    notebook.add(tab_resources, text="📦 Inventory Audit")
-    
-    tree_resources = tb.Treeview(tab_resources, bootstyle="warning", columns=("Resource ID", "Resource Name", "Available Qty"), show="headings", height=15)
-    tree_resources.pack(fill=BOTH, expand=True, padx=10, pady=10)
-    
-    for col in ("Resource ID", "Resource Name", "Available Qty"):
-        tree_resources.heading(col, text=col)
-        tree_resources.column(col, anchor=CENTER)
+    ev_cols = ("ID", "Event Name", "Start Date", "End Date")
+    tree_ev = tb.Treeview(tab_events, columns=ev_cols, show="headings", height=14)
+    for c in ev_cols:
+        tree_ev.heading(c, text=c)
+        tree_ev.column(c, anchor=CENTER, width=150)
+    tree_ev.pack(fill=BOTH, expand=True)
+
+    scroll_ev = tb.Scrollbar(tab_events, orient=VERTICAL, command=tree_ev.yview)
+    tree_ev.configure(yscrollcommand=scroll_ev.set)
+    scroll_ev.place(relx=1.0, rely=0, relheight=1.0, anchor=NE)
 
     try:
-        resource_rows = db.get_resources()
-        for row in resource_rows:
-            tree_resources.insert("", "end", values=row)
+        for row in db.get_events():
+            tree_ev.insert("", END, values=row)
     except Exception as e:
-        tb.Label(tab_resources, text=f"Error loading resources: {str(e)}", bootstyle="danger").pack(pady=20)
+        tb.Label(tab_events, text=f"Could not load events: {e}", foreground="#ef4444").pack()
 
-    tb.Button(frame, text="Close Dashboard", command=view_win.destroy, bootstyle="secondary").pack(side=RIGHT)
+    # ── Resources tab ──
+    tab_res = tb.Frame(notebook, padding=PAD_SM)
+    notebook.add(tab_res, text="  Resources  ")
+
+    res_cols = ("ID", "Resource Name", "Available Qty")
+    tree_res = tb.Treeview(tab_res, columns=res_cols, show="headings", height=14)
+    for c in res_cols:
+        tree_res.heading(c, text=c)
+        tree_res.column(c, anchor=CENTER, width=180)
+    tree_res.pack(fill=BOTH, expand=True)
+
+    scroll_res = tb.Scrollbar(tab_res, orient=VERTICAL, command=tree_res.yview)
+    tree_res.configure(yscrollcommand=scroll_res.set)
+    scroll_res.place(relx=1.0, rely=0, relheight=1.0, anchor=NE)
+
+    try:
+        for row in db.get_resources():
+            tree_res.insert("", END, values=row)
+    except Exception as e:
+        tb.Label(tab_res, text=f"Could not load resources: {e}", foreground="#ef4444").pack()
+
+    return panel
