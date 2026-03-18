@@ -7,6 +7,23 @@ from styles import PAD_SM, PAD_MD, PAD_LG
 
 db = Database()
 
+def format_error(e):
+    """Convert raw system/database errors into user-friendly messages."""
+    msg = str(e).lower()
+    if "1045" in msg or "access denied" in msg:
+        return "Access denied. Please check database credentials."
+    elif "1049" in msg or "unknown database" in msg:
+        return "Database not found. Ensure 'Dbms_Project' exists."
+    elif "2003" in msg or "can't connect" in msg:
+        return "Could not connect. Is the MySQL server running locally?"
+    elif "1062" in msg or "duplicate entry" in msg:
+        return "Duplicate entry. This record already exists."
+    elif "1452" in msg or "foreign key constraint" in msg:
+        return "Invalid reference. Ensure the Venue or Resource ID exists."
+    elif "invalid literal for int" in msg or "invalid int" in msg:
+        return "Please enter a valid whole number for quantities or IDs."
+    return "An unexpected database error occurred. Try again."
+
 # ── Helpers ──
 
 def _labeled_field(parent, label, row, widget_factory):
@@ -72,7 +89,7 @@ def build_event_panel(parent):
             status_var.set("✓  Event created successfully.")
             status_lbl.configure(bootstyle="success")
         except Exception as e:
-            status_var.set(f"✕  {e}")
+            status_var.set(f"✕  {format_error(e)}")
             status_lbl.configure(bootstyle="danger")
 
     btn_frame = tb.Frame(panel)
@@ -121,7 +138,7 @@ def build_resource_panel(parent):
             )
             result_lbl.configure(bootstyle="success")
         except Exception as e:
-            result_var.set(f"Allocation failed: {e}")
+            result_var.set(f"✕  Allocation failed: {format_error(e)}")
             result_lbl.configure(bootstyle="danger")
 
     tb.Button(panel, text="Confirm Allocation", command=allocate, bootstyle="warning", width=20).pack(anchor=W, pady=(0, PAD_SM))
@@ -159,7 +176,7 @@ def build_view_panel(parent):
         for row in db.get_events():
             tree_ev.insert("", END, values=row)
     except Exception as e:
-        tb.Label(tab_events, text=f"Could not load events: {e}", bootstyle="danger").pack()
+        tb.Label(tab_events, text=f"Could not load events: {format_error(e)}", bootstyle="danger").pack(pady=20)
 
     # ── Resources tab ──
     tab_res = tb.Frame(notebook, padding=PAD_SM)
@@ -180,6 +197,6 @@ def build_view_panel(parent):
         for row in db.get_resources():
             tree_res.insert("", END, values=row)
     except Exception as e:
-        tb.Label(tab_res, text=f"Could not load resources: {e}", bootstyle="danger").pack()
+        tb.Label(tab_res, text=f"Could not load resources: {format_error(e)}", bootstyle="danger").pack(pady=20)
 
     return panel
