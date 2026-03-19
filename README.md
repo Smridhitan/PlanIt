@@ -20,7 +20,7 @@ Ensure the following dependencies are available on the host machine prior to exe
 2. **MySQL Server**, running locally on the standard port, configured with:
    - Target Database Name: `Dbms_Project`
    - Target Username: `root`
-   - Target Password: `College@24`
+   - Target Password: `----`
    *(Configuration parameters can be modified within the `database.py` logic if your local environment utilizes different credentials).*
 
 ## Installation and Execution Guide
