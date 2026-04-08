@@ -42,6 +42,10 @@ def build_form(parent, fields, submit_callback, btn_text="Submit", btn_style="pr
             e = tb.Entry(form, width=35)
             e.grid(row=i, column=1, sticky=EW, pady=PAD_SM)
             entries[key] = e
+        elif widget_type == 'date':
+            e = tb.DateEntry(form, bootstyle="primary")
+            e.grid(row=i, column=1, sticky=EW, pady=PAD_SM)
+            entries[key] = e.entry
         elif isinstance(widget_type, list):
             e = tb.Combobox(form, width=33, values=widget_type, state="readonly")
             if widget_type: e.current(0)
@@ -110,7 +114,7 @@ def build_users_panel(parent):
     _section_header(tab_add, "Register New User", "Add a new user to the platform.")
     build_form(tab_add, [
         ('first_name', 'First Name', 'entry'), ('last_name', 'Last Name', 'entry'),
-        ('dob', 'DOB (YYYY-MM-DD)', 'entry'), ('email_id', 'Email', 'entry'), ('phone_no', 'Phone No', 'entry')
+        ('dob', 'DOB', 'date'), ('email_id', 'Email', 'entry'), ('phone_no', 'Phone No', 'entry')
     ], lambda **k: db.add_user(k['first_name'], k['last_name'], k['dob'], k['email_id'], k['phone_no']))
     
     tab_view = tb.Frame(notebook, padding=PAD_MD)
@@ -128,19 +132,27 @@ def build_event_panel(parent):
     tab_add = tb.Frame(notebook, padding=PAD_MD)
     notebook.add(tab_add, text=" Add Event ")
     _section_header(tab_add, "Create Event", "Register a new event.")
+    
+    def on_add_event(**k):
+        if not k['event_name'].strip():
+            raise ValueError("Event name cannot be empty.")
+        if k['deadline'] > k['start_date']:
+            raise ValueError("Registration deadline cannot be after start date.")
+        db.add_event(k['event_name'], k['event_type'], k['start_date'], k['end_date'], k['fees'], k['deadline'], k['status'], k['desc'], k['slots'], k['venue_id'])
+
     build_form(tab_add, [
         ('event_name', 'Event Name', 'entry'), 
         ('event_type', 'Event Type', ['Workshop', 'Performance', 'Panel Discussion', 'Keynote Talk']),
-        ('start_date', 'Start Date (YYYY-MM-DD)', 'entry'), ('end_date', 'End Date (YYYY-MM-DD)', 'entry'),
-        ('fees', 'Fees', 'entry'), ('deadline', 'Reg. Deadline (YYYY-MM-DD)', 'entry'),
+        ('start_date', 'Start Date', 'date'), ('end_date', 'End Date', 'date'),
+        ('fees', 'Fees', 'entry'), ('deadline', 'Reg. Deadline', 'date'),
         ('status', 'Status', ['Draft', 'Upcoming', 'Ongoing', 'Completed', 'Cancelled']),
         ('desc', 'Description', 'entry'), ('slots', 'Available Slots', 'entry'), ('venue_id', 'Venue ID', 'entry')
-    ], lambda **k: db.add_event(k['event_name'], k['event_type'], k['start_date'], k['end_date'], k['fees'], k['deadline'], k['status'], k['desc'], k['slots'], k['venue_id']))
+    ], on_add_event)
     
     tab_view = tb.Frame(notebook, padding=PAD_MD)
     notebook.add(tab_view, text=" View / Delete ")
     _section_header(tab_view, "All Events", "Browse all events.")
-    build_treeview(tab_view, ("Event Name", "Start Date", "End Date", "Venue Name"), db.view_events)
+    build_treeview(tab_view, ("Event ID", "Event Name", "Event Type", "Start Date", "End Date", "Venue Name"), db.view_events)
     _section_header(tab_view, "Delete Event")
     build_form(tab_view, [('event_id', 'Event ID', 'entry')], lambda **k: db.delete_event(k['event_id']), "Delete", "danger")
     
@@ -154,11 +166,45 @@ def build_sessions_panel(parent):
     _section_header(tab_add, "Create Session", "Add a session to an event.")
     build_form(tab_add, [
         ('event_id', 'Event ID', 'entry'), ('speaker_id', 'Speaker ID', 'entry'),
-        ('title', 'Session Title', 'entry'), ('date', 'Date (YYYY-MM-DD)', 'entry'),
+        ('title', 'Session Title', 'entry'), ('date', 'Date', 'date'),
         ('start_time', 'Start Time (HH:MM:SS)', 'entry'), ('end_time', 'End Time (HH:MM:SS)', 'entry'),
         ('total_slots', 'Total Slots', 'entry')
     ], lambda **k: db.add_session(k['event_id'], k['speaker_id'], k['title'], k['date'], k['start_time'], k['end_time'], k['total_slots']))
     
+    tab_view = tb.Frame(notebook, padding=PAD_MD)
+    notebook.add(tab_view, text=" View Sessions ")
+    _section_header(tab_view, "Sessions by Event")
+    
+    form_frame = tb.Frame(tab_view)
+    form_frame.pack(fill=X)
+    tb.Label(form_frame, text="Select Event:").pack(side=LEFT, padx=(0, 5))
+    
+    try:
+        events = db.view_events()
+        event_names = [f"[{r[0]}] {r[1]}" for r in events]
+    except Exception as e:
+        events = []
+        event_names = []
+    
+    events_cb = tb.Combobox(form_frame, values=event_names, state="readonly", width=40)
+    events_cb.pack(side=LEFT)
+    if event_names: events_cb.current(0)
+    
+    res_frame = tb.Frame(tab_view)
+    res_frame.pack(fill=BOTH, expand=True, pady=PAD_MD)
+    
+    def on_view():
+        for widget in res_frame.winfo_children(): widget.destroy()
+        selection = events_cb.get()
+        if not selection: return
+        try:
+            event_id = int(selection.split(']')[0][1:])
+            build_treeview(res_frame, ("Session ID", "Event ID", "Speaker ID", "Title", "Date", "Start Time", "End Time", "Total Slots", "Filled"), lambda: db.view_sessions(event_id))
+        except Exception as e:
+            tb.Label(res_frame, text=format_error(e), bootstyle="danger").pack(anchor=W)
+
+    tb.Button(form_frame, text="View", command=on_view).pack(side=LEFT, padx=10)
+
     tab_del = tb.Frame(notebook, padding=PAD_MD)
     notebook.add(tab_del, text=" Delete Session ")
     _section_header(tab_del, "Delete Session")
@@ -174,17 +220,17 @@ def build_registrations_panel(parent):
     _section_header(tab_event, "Register for Event")
     build_form(tab_event, [
         ('user_id', 'User ID', 'entry'), ('event_id', 'Event ID', 'entry'),
-        ('date', 'Date (YYYY-MM-DD)', 'entry'), ('status', 'Status', ['Confirmed', 'Pending']),
+        ('date', 'Date', 'date'),
         ('id_type', 'Govt ID Type', ['Aadhar', 'Passport', 'Driving License', 'PAN']),
         ('id_number', 'Govt ID Number', 'entry')
-    ], lambda **k: db.register_for_event(k['user_id'], k['event_id'], k['date'], k['status'], k['id_type'], k['id_number']))
+    ], lambda **k: db.register_for_event(k['user_id'], k['event_id'], k['date'], k['id_type'], k['id_number']))
     
     tab_session = tb.Frame(notebook, padding=PAD_MD)
     notebook.add(tab_session, text=" Session Registration ")
     _section_header(tab_session, "Register for Session")
     build_form(tab_session, [
         ('user_id', 'User ID', 'entry'), ('session_id', 'Session ID', 'entry'),
-        ('date', 'Date (YYYY-MM-DD)', 'entry'), ('status', 'Status', ['Registered', 'Cancelled']),
+        ('date', 'Date', 'date'), ('status', 'Status', ['Registered', 'Cancelled']),
         ('id_type', 'Govt ID Type', ['Aadhar', 'Passport', 'Driving License', 'PAN']),
         ('id_number', 'Govt ID Number', 'entry')
     ], lambda **k: db.register_for_session(k['user_id'], k['session_id'], k['date'], k['status'], k['id_type'], k['id_number']))
@@ -234,10 +280,8 @@ def build_venues_panel(parent):
     
     form_frame = tb.Frame(tab)
     form_frame.pack(fill=X)
-    e_start = _entry(form_frame)
-    e_start.insert(0, "YYYY-MM-DD")
-    e_end = _entry(form_frame)
-    e_end.insert(0, "YYYY-MM-DD")
+    e_start = tb.DateEntry(form_frame, bootstyle="primary")
+    e_end = tb.DateEntry(form_frame, bootstyle="primary")
     e_city = _entry(form_frame)
     
     tb.Label(form_frame, text="Start Date:").grid(row=0, column=0, pady=5)
@@ -253,7 +297,7 @@ def build_venues_panel(parent):
     def on_search():
         for widget in res_frame.winfo_children(): widget.destroy()
         try:
-            data = db.view_available_venues(e_start.get(), e_end.get(), e_city.get())
+            data = db.view_available_venues(e_start.entry.get(), e_end.entry.get(), e_city.get())
             build_treeview(res_frame, ("Venue ID", "Name", "Room", "Capacity", "Status", "Street", "City", "State", "Pincode"), lambda: data)
         except Exception as e:
             tb.Label(res_frame, text=f"Error: {format_error(e)}", bootstyle="danger").pack(anchor=W)

@@ -35,9 +35,14 @@ class queries:
 
 
     def delete_user(self, user_id): #To used by admin to delete a specific user
+        if int(user_id) < 0:
+            raise ValueError("User ID cannot be negative.")
         conn = self.connect_to_dbms()
         curr = conn.cursor()
         curr.execute("DELETE FROM Users WHERE user_id = %s", (user_id,))
+        if curr.rowcount == 0:
+            conn.close()
+            raise ValueError("User does not exist.")
         conn.commit()
         conn.close()
 
@@ -60,7 +65,7 @@ class queries:
         conn = self.connect_to_dbms()
         curr = conn.cursor()
         curr.execute("""
-            SELECT e.event_name, e.start_date, e.end_date, v.venue_name
+            SELECT e.event_id, e.event_name, e.event_type, e.start_date, e.end_date, v.venue_name
             FROM Event e
             JOIN Venue v ON e.venue_id = v.venue_id
         """)
@@ -85,9 +90,14 @@ class queries:
 
 
     def delete_event(self, event_id): #Organizer can delete event
+        if int(event_id) < 0:
+            raise ValueError("Event ID cannot be negative.")
         conn = self.connect_to_dbms()
         curr = conn.cursor()
         curr.execute("DELETE FROM Event WHERE event_id = %s", (event_id,))
+        if curr.rowcount == 0:
+            conn.close()
+            raise ValueError("Event does not exist.")
         conn.commit()
         conn.close()
 
@@ -106,6 +116,8 @@ class queries:
         conn.close()
         
     def delete_session(self, session_id):
+        if int(session_id) < 0:
+            raise ValueError("Session ID cannot be negative.")
         conn = self.connect_to_dbms()
         curr = conn.cursor()
 
@@ -113,6 +125,10 @@ class queries:
             DELETE FROM Session
             WHERE session_id = %s
         """, (session_id,))
+        
+        if curr.rowcount == 0:
+            conn.close()
+            raise ValueError("Session does not exist.")
 
         conn.commit()
         conn.close()
@@ -143,14 +159,14 @@ class queries:
 
     # REGISTRATION FUNCTIONS
 
-    def register_for_event(self, user_id, event_id, date, status, id_type, id_number): #Users can register for an event
+    def register_for_event(self, user_id, event_id, date, id_type, id_number): #Users can register for an event
         conn = self.connect_to_dbms()
         curr = conn.cursor()
         curr.execute("""
             INSERT INTO Event_Registration
             (user_id, event_id, registration_date, registration_status, govt_id_type, govt_id_number)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (user_id, event_id, date, status, id_type, id_number))
+            VALUES (%s, %s, %s, 'Pending', %s, %s)
+        """, (user_id, event_id, date, id_type, id_number))
         conn.commit()
         conn.close()
 
