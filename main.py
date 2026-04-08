@@ -5,13 +5,23 @@ from styles import (
     apply_theme_styles, PAD_SM, PAD_MD, PAD_LG, SIDEBAR_WIDTH,
     FONT_HEADING, FONT_SMALL
 )
-from ui_windows import build_event_panel, build_resource_panel, build_view_panel
+from ui_windows import (
+    build_users_panel, build_event_panel, build_sessions_panel,
+    build_registrations_panel, build_resources_panel, build_venues_panel,
+    build_vendors_panel, build_analytics_panel, build_payments_panel
+)
 
 # ── Navigation items ──
 NAV_ITEMS = [
-    ("Events",     "Add Event",            build_event_panel),
-    ("Resources",  "Allocate Resources",   build_resource_panel),
-    ("Dashboard",  "Analytics Dashboard",  build_view_panel),
+    ("Users", "Manage Users", build_users_panel),
+    ("Events", "Manage Events", build_event_panel),
+    ("Sessions", "Manage Sessions", build_sessions_panel),
+    ("Registrations", "Registrations", build_registrations_panel),
+    ("Resources", "Resources & Allocation", build_resources_panel),
+    ("Venues", "Search Venues", build_venues_panel),
+    ("Vendors", "Manage Vendors", build_vendors_panel),
+    ("Payments", "Process Payments", build_payments_panel),
+    ("Dashboard", "Analytics", build_analytics_panel),
 ]
 
 class App:

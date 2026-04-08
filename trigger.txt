@@ -1,0 +1,62 @@
+DELIMITER $$
+
+CREATE TRIGGER trg_prevent_event_overlap
+BEFORE INSERT ON Event
+FOR EACH ROW
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM Event e
+        WHERE e.venue_id = NEW.venue_id
+        AND NOT (
+            NEW.end_date < e.start_date 
+            OR
+            NEW.start_date > e.end_date
+        )
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Event dates overlap at this venue';
+    END IF;
+END$$
+
+DELIMITER ;
+
+
+
+
+
+CREATE TRIGGER trg_update_resource_quantity
+AFTER INSERT ON Resource_Allocation
+FOR EACH ROW
+BEGIN
+    UPDATE Resource
+    SET available_quantity = available_quantity - NEW.quantity_allocated
+    WHERE resource_id = NEW.resource_id;
+END$$
+
+
+
+DELIMITER $$
+
+CREATE TRIGGER trg_check_resource_availability
+BEFORE INSERT ON Resource_Allocation
+FOR EACH ROW
+BEGIN
+    DECLARE available INT;
+    DECLARE r_status VARCHAR(30);
+
+    SELECT available_quantity, status
+    INTO available, r_status
+    FROM Resource
+    WHERE resource_id = NEW.resource_id;
+
+    IF r_status <> 'Available' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Resource is not available for allocation';
+    END IF;
+
+    IF NEW.quantity_allocated > available THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Insufficient resource quantity';
+    END IF;
+END$$
