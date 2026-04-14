@@ -44,7 +44,6 @@ def apply_theme_styles(is_dark=False):
         anchor="w",
         relief="flat",
         borderwidth=0,
-        foreground=accent_color,
     )
 
     # Panel headings
